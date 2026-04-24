@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FridgeTrack</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;1,9..144,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f2eb;
+    --surface: #fffdf8;
+    --surface2: #f0ede4;
+    --border: #d8d3c8;
+    --border-strong: #b5ae9f;
+    --text: #1a1814;
+    --text-muted: #7a7468;
+    --text-faint: #b0a99e;
+    --green: #2d6a4f;
+    --green-bg: #e8f5ee;
+    --amber: #92620a;
+    --amber-bg: #fef3db;
+    --red: #9b2626;
+    --red-bg: #fce8e8;
+    --accent: #2d6a4f;
+    --scan-line: #4ade80;
+    --radius: 12px;
+  }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 3rem;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.04);
+  }
+
+  header .brand { display: flex; align-items: baseline; gap: 0.6rem; }
+
+  header h1 {
+    font-family: 'Fraunces', serif;
+    font-size: 1.45rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+  }
+
+  header .subtitle {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: lowercase;
+  }
+
+  .header-counts {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .hc-pill {
+    font-size: 0.68rem;
+    padding: 3px 9px;
+    border-radius: 20px;
+    letter-spacing: 0.04em;
+  }
+  .hc-pill.warn { background: var(--amber-bg); color: var(--amber); }
+  .hc-pill.bad  { background: var(--red-bg);   color: var(--red);   }
+
+  .container { max-width: 660px; margin: 0 auto; padding: 1.25rem 1rem; }
+
+  /* Stats */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 1.4rem; }
+  .stat-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 10px;
+    text-align: center;
+    transition: box-shadow 0.15s;
+  }
+  .stat-box:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.07); }
+  .stat-box .n { font-size: 1.5rem; font-weight: 500; line-height: 1; }
+  .stat-box .l { font-size: 0.62rem; color: var(--text-muted); margin-top: 4px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .stat-box.good .n { color: var(--green); }
+  .stat-box.warn .n { color: var(--amber); }
+  .stat-box.bad  .n { color: var(--red);   }
+
+  /* Tabs */
+  .tabs {
+    display: flex; gap: 2px; margin-bottom: 1.25rem;
+    background: var(--surface2); border-radius: var(--radius); padding: 3px;
+    border: 1px solid var(--border);
+  }
+  .tab-btn {
+    flex: 1; padding: 8px 4px; font-family: 'DM Mono', monospace; font-size: 0.7rem;
+    letter-spacing: 0.03em; background: none; border: none; cursor: pointer;
+    border-radius: 9px; color: var(--text-muted); transition: all 0.15s; line-height: 1.2;
+  }
+  .tab-btn.active {
+    background: var(--surface); color: var(--text);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    font-weight: 500;
+  }
+  .tab-btn:hover:not(.active) { color: var(--text); background: rgba(255,255,255,0.5); }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 1.1rem;
+  }
+
+  .card-header {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--surface2);
+  }
+
+  .card-header h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 0.95rem;
+    font-weight: 300;
+    font-style: italic;
+  }
+
+  .card-header .sub { font-size: 0.67rem; color: var(--text-muted); letter-spacing: 0.04em; }
+
+  /* Mode toggle */
+  .mode-toggle { display: flex; gap: 4px; }
+  .mode-btn {
+    font-family: 'DM Mono', monospace; font-size: 0.68rem; padding: 4px 11px;
+    border: 1px solid var(--border); border-radius: 7px; background: none;
+    cursor: pointer; color: var(--text-muted); transition: all 0.15s;
+  }
+  .mode-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  /* Camera */
+  #camera-container {
+    position: relative; background: #111;
+    height: 210px; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+  #camera-feed { width: 100%; height: 100%; object-fit: cover; display: none; }
+  #scan-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  .scan-frame { width: 230px; height: 115px; border: 1.5px solid rgba(255,255,255,0.5); border-radius: 10px; position: relative; }
+  .scan-frame::before, .scan-frame::after { content: ''; position: absolute; width: 18px; height: 18px; }
+  .scan-frame::before { top: -2px; left: -2px; border-top: 3px solid var(--scan-line); border-left: 3px solid var(--scan-line); border-radius: 4px 0 0 0; }
+  .scan-frame::after  { bottom: -2px; right: -2px; border-bottom: 3px solid var(--scan-line); border-right: 3px solid var(--scan-line); border-radius: 0 0 4px 0; }
+  .scan-line-anim { position: absolute; left: 4px; right: 4px; height: 2px; background: var(--scan-line); box-shadow: 0 0 10px var(--scan-line); animation: scanLine 2s ease-in-out infinite; top: 10px; }
+  @keyframes scanLine { 0%,100%{top:10px;opacity:1} 50%{top:calc(100% - 12px);opacity:0.7} }
+
+  .camera-placeholder { display: flex; flex-direction: column; align-items: center; gap: 10px; color: #777; font-size: 0.73rem; letter-spacing: 0.05em; }
+  .camera-placeholder svg { opacity: 0.35; }
+  #start-camera-btn {
+    margin-top: 6px; padding: 8px 20px; font-family: 'DM Mono', monospace; font-size: 0.75rem;
+    background: var(--scan-line); color: #111; border: none; border-radius: 8px; cursor: pointer;
+    font-weight: 500; letter-spacing: 0.03em; transition: opacity 0.15s;
+  }
+  #start-camera-btn:hover { opacity: 0.85; }
+
+  #scan-status { text-align: center; font-size: 0.7rem; letter-spacing: 0.05em; padding: 7px 16px; color: var(--text-muted); min-height: 28px; }
+
+  /* Manual input */
+  .manual-input { padding: 14px 16px; display: flex; gap: 8px; }
+  .manual-input input {
+    flex: 1; font-family: 'DM Mono', monospace; font-size: 0.82rem;
+    padding: 9px 12px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg); color: var(--text); letter-spacing: 0.07em;
+  }
+  .manual-input input:focus { outline: none; border-color: var(--border-strong); box-shadow: 0 0 0 2px rgba(45,106,79,0.1); }
+  .lookup-btn {
+    padding: 9px 14px; font-family: 'DM Mono', monospace; font-size: 0.73rem;
+    background: var(--text); color: var(--bg); border: none; border-radius: 8px;
+    cursor: pointer; white-space: nowrap; transition: opacity 0.15s;
+  }
+  .lookup-btn:hover { opacity: 0.8; }
+
+  /* Result */
+  #lookup-result { margin: 0 14px 14px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: none; }
+  .result-header {
+    padding: 9px 14px; background: var(--green-bg); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px; font-size: 0.72rem; color: var(--green); letter-spacing: 0.04em;
+  }
+  .result-form { padding: 12px 14px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .result-form .full { grid-column: 1/-1; }
+  .rf-field { display: flex; flex-direction: column; gap: 4px; }
+  .rf-field label { font-size: 0.63rem; color: var(--text-muted); letter-spacing: 0.07em; text-transform: uppercase; }
+  .rf-field input, .rf-field select {
+    font-family: 'DM Mono', monospace; font-size: 0.8rem;
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px;
+    background: var(--bg); color: var(--text); transition: border-color 0.15s;
+  }
+  .rf-field input:focus, .rf-field select:focus { outline: none; border-color: var(--border-strong); box-shadow: 0 0 0 2px rgba(45,106,79,0.08); }
+
+  .result-actions { padding: 0 14px 14px; display: flex; gap: 8px; }
+  .confirm-btn {
+    flex: 1; padding: 10px; font-family: 'DM Mono', monospace; font-size: 0.78rem;
+    background: var(--green); color: #fff; border: none; border-radius: 8px;
+    cursor: pointer; letter-spacing: 0.03em; transition: opacity 0.15s; font-weight: 500;
+  }
+  .confirm-btn:hover { opacity: 0.88; }
+  .cancel-btn {
+    padding: 10px 14px; font-family: 'DM Mono', monospace; font-size: 0.78rem;
+    background: none; color: var(--text-muted); border: 1px solid var(--border);
+    border-radius: 8px; cursor: pointer; transition: background 0.15s;
+  }
+  .cancel-btn:hover { background: var(--surface2); }
+
+  /* Form inside card */
+  .card-body { padding: 14px 16px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .form-grid .full { grid-column: 1/-1; }
+  .wide-btn {
+    width: 100%; padding: 10px; font-family: 'DM Mono', monospace; font-size: 0.8rem;
+    background: var(--text); color: var(--bg); border: none; border-radius: 8px;
+    cursor: pointer; letter-spacing: 0.03em; transition: opacity 0.15s; font-weight: 500;
+  }
+  .wide-btn:hover { opacity: 0.82; }
+
+  /* Filters */
+  .inv-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1rem; }
+  .filter-btn {
+    font-family: 'DM Mono', monospace; font-size: 0.67rem; padding: 5px 12px;
+    border: 1px solid var(--border); border-radius: 20px; background: var(--surface);
+    cursor: pointer; color: var(--text-muted); transition: all 0.15s; letter-spacing: 0.04em;
+  }
+  .filter-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .filter-btn:hover:not(.active) { background: var(--surface2); color: var(--text); }
+
+  /* Item rows */
+  .item-list { display: flex; flex-direction: column; gap: 6px; }
+  .item-row {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 11px 14px; display: grid; grid-template-columns: 1fr auto;
+    gap: 6px; align-items: center; animation: fadeIn 0.18s ease;
+    transition: box-shadow 0.15s;
+  }
+  .item-row:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(-3px)} to{opacity:1;transform:translateY(0)} }
+  .item-row .item-name { font-size: 0.87rem; font-weight: 500; }
+  .item-row .item-meta { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+  .item-row .item-right { display: flex; align-items: center; gap: 8px; }
+
+  .pill { font-size: 0.64rem; padding: 3px 9px; border-radius: 20px; letter-spacing: 0.04em; font-weight: 500; white-space: nowrap; }
+  .pill.fresh   { background: var(--green-bg); color: var(--green); }
+  .pill.soon    { background: var(--amber-bg); color: var(--amber); }
+  .pill.expired { background: var(--red-bg);   color: var(--red);   }
+
+  .rm-btn { background: none; border: none; cursor: pointer; color: var(--text-faint); font-size: 0.8rem; padding: 3px 5px; line-height: 1; border-radius: 5px; transition: all 0.15s; }
+  .rm-btn:hover { color: var(--red); background: var(--red-bg); }
+
+  /* Recipes */
+  .recipe-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 8px; transition: box-shadow 0.15s; }
+  .recipe-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.07); }
+  .recipe-card h3 { font-family: 'Fraunces', serif; font-size: 1rem; font-weight: 300; margin-bottom: 7px; }
+  .readiness-bar { height: 3px; background: var(--surface2); border-radius: 2px; margin-bottom: 7px; overflow: hidden; }
+  .readiness-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width 0.4s; }
+  .recipe-card .r-have { font-size: 0.71rem; color: var(--green); margin-bottom: 3px; }
+  .recipe-card .r-miss { font-size: 0.71rem; color: var(--amber); }
+  .r-ready { font-size: 0.71rem; color: var(--green); margin-top: 2px; font-weight: 500; }
+
+  /* Restock */
+  .restock-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 16px; margin-bottom: 7px; display: flex; justify-content: space-between; align-items: center;
+    transition: box-shadow 0.15s;
+  }
+  .restock-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .restock-card .item-name { font-size: 0.87rem; font-weight: 500; }
+  .restock-card .item-meta { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+
+  .section-note { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 1rem; letter-spacing: 0.04em; }
+
+  .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-faint); font-size: 0.78rem; letter-spacing: 0.05em; }
+  .empty-state span { display: block; font-size: 1.6rem; margin-bottom: 8px; }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(70px);
+    background: var(--green); color: #fff; padding: 10px 22px; border-radius: 20px;
+    font-size: 0.78rem; letter-spacing: 0.03em; transition: transform 0.25s ease; z-index: 100;
+    pointer-events: none; box-shadow: 0 4px 16px rgba(45,106,79,0.35);
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  section { display: none; }
+  section.active { display: block; }
+
+  @media (max-width: 480px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .result-form, .form-grid { grid-template-columns: 1fr; }
+    .result-form .full, .form-grid .full { grid-column: 1; }
+    .header-counts { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>FridgeTrack</h1>
+    <span class="subtitle">kühlschrank manager</span>
+  </div>
+  <div class="header-counts" id="header-counts"></div>
+</header>
+
+<div class="container">
+
+  <div class="stats" id="stats-bar"></div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('scan')">+ hinzufügen</button>
+    <button class="tab-btn" onclick="showTab('inventory')">inhalt</button>
+    <button class="tab-btn" onclick="showTab('recipes')">rezepte</button>
+    <button class="tab-btn" onclick="showTab('restock')">einkaufen</button>
+  </div>
+
+  <!-- SCAN TAB -->
+  <section id="tab-scan" class="active">
+
+    <!-- Scanner card -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Barcode scannen</h2>
+        <div class="mode-toggle">
+          <button class="mode-btn active" onclick="setMode('camera')" id="btn-camera">Kamera</button>
+          <button class="mode-btn" onclick="setMode('manual')" id="btn-manual">Nummer</button>
+        </div>
+      </div>
+
+      <div id="mode-camera">
+        <div id="camera-container">
+          <video id="camera-feed" playsinline autoplay muted></video>
+          <div id="scan-overlay">
+            <div class="scan-frame"><div class="scan-line-anim"></div></div>
+          </div>
+          <div class="camera-placeholder" id="cam-placeholder">
+            <svg width="46" height="46" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            <span>kamera auf barcode richten</span>
+            <button id="start-camera-btn" onclick="startCamera()">Kamera starten</button>
+          </div>
+        </div>
+        <div id="scan-status">bereit zum scannen</div>
+      </div>
+
+      <div id="mode-manual" style="display:none">
+        <div class="manual-input">
+          <input type="text" id="upc-input" placeholder="Barcode-Nummer eingeben" maxlength="14" />
+          <button class="lookup-btn" onclick="lookupUPC(document.getElementById('upc-input').value.trim())">Suchen</button>
+        </div>
+      </div>
+
+      <div id="lookup-result">
+        <div class="result-header">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          produkt gefunden — details prüfen
+        </div>
+        <div class="result-form">
+          <div class="rf-field full">
+            <label>Name</label>
+            <input type="text" id="res-name" />
+          </div>
+          <div class="rf-field">
+            <label>Menge</label>
+            <input type="text" id="res-qty" />
+          </div>
+          <div class="rf-field">
+            <label>Kategorie</label>
+            <select id="res-cat">
+              <option>Milch &amp; Käse</option>
+              <option>Gemüse &amp; Obst</option>
+              <option>Fleisch</option>
+              <option>Reste</option>
+              <option>Soßen</option>
+              <option>Getränke</option>
+              <option>Sonstiges</option>
+            </select>
+          </div>
+          <div class="rf-field full">
+            <label>Mindesthaltbarkeit</label>
+            <input type="date" id="res-exp" />
+          </div>
+        </div>
+        <div class="result-actions">
+          <button class="confirm-btn" onclick="confirmAdd()">In den Kühlschrank</button>
+          <button class="cancel-btn" onclick="cancelResult()">Abbrechen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick add card -->
+    <div class="card">
+      <div class="card-header">
+        <h2>Schnell hinzufügen</h2>
+        <span class="sub">kein barcode nötig</span>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="rf-field full">
+            <label>Name</label>
+            <input type="text" id="qa-name" placeholder="z.B. Reste vom Mittag" />
+          </div>
+          <div class="rf-field">
+            <label>Menge</label>
+            <input type="text" id="qa-qty" placeholder="z.B. 2 Portionen" />
+          </div>
+          <div class="rf-field">
+            <label>Kategorie</label>
+            <select id="qa-cat">
+              <option>Milch &amp; Käse</option>
+              <option>Gemüse &amp; Obst</option>
+              <option>Fleisch</option>
+              <option>Reste</option>
+              <option>Soßen</option>
+              <option>Getränke</option>
+              <option>Sonstiges</option>
+            </select>
+          </div>
+          <div class="rf-field full">
+            <label>Mindesthaltbarkeit</label>
+            <input type="date" id="qa-exp" />
+          </div>
+        </div>
+        <button class="wide-btn" onclick="quickAdd()">Hinzufügen</button>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- INVENTORY TAB -->
+  <section id="tab-inventory">
+    <div class="inv-filters">
+      <button class="filter-btn active" onclick="setFilter('all')" data-f="all">alle</button>
+      <button class="filter-btn" onclick="setFilter('expired')" data-f="expired">abgelaufen</button>
+      <button class="filter-btn" onclick="setFilter('soon')" data-f="soon">bald weg</button>
+      <button class="filter-btn" onclick="setFilter('fresh')" data-f="fresh">frisch</button>
+      <button class="filter-btn" onclick="setFilter('Milch & Käse')" data-f="Milch & Käse">milch</button>
+      <button class="filter-btn" onclick="setFilter('Gemüse & Obst')" data-f="Gemüse & Obst">gemüse</button>
+      <button class="filter-btn" onclick="setFilter('Fleisch')" data-f="Fleisch">fleisch</button>
+    </div>
+    <div class="item-list" id="item-list"></div>
+  </section>
+
+  <!-- RECIPES TAB -->
+  <section id="tab-recipes">
+    <div id="recipe-grid"></div>
+  </section>
+
+  <!-- RESTOCK TAB -->
+  <section id="tab-restock">
+    <p class="section-note">abgelaufene oder bald ablaufende produkte (innerhalb 2 tage)</p>
+    <div id="restock-grid"></div>
+  </section>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
+<script>
+const today = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+const daysUntil = ds => { const d = new Date(ds); d.setHours(0,0,0,0); return Math.round((d - today()) / 86400000); };
+const expStatus = ds => { if (!ds) return 'unknown'; const n = daysUntil(ds); return n < 0 ? 'expired' : n <= 2 ? 'soon' : 'fresh'; };
+const expLabel = ds => {
+  if (!ds) return '';
+  const n = daysUntil(ds);
+  if (n < 0) return 'abgelaufen';
+  if (n === 0) return 'heute';
+  if (n === 1) return 'morgen';
+  if (n <= 2) return 'in 2 Tagen';
+  return 'MHD ' + new Date(ds).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
+};
+
+let items = [
+  { id: 1, name: 'Vollmilch', qty: '1 L', exp: '2026-04-25', cat: 'Milch & Käse' },
+  { id: 2, name: 'Eier', qty: '6 Stück', exp: '2026-04-30', cat: 'Milch & Käse' },
+  { id: 3, name: 'Cheddar', qty: '200 g', exp: '2026-05-10', cat: 'Milch & Käse' },
+  { id: 4, name: 'Hähnchenbrust', qty: '500 g', exp: '2026-04-24', cat: 'Fleisch' },
+  { id: 5, name: 'Babyspinat', qty: '1 Beutel', exp: '2026-04-23', cat: 'Gemüse & Obst' },
+  { id: 6, name: 'Karotten', qty: '4 Stück', exp: '2026-05-05', cat: 'Gemüse & Obst' },
+  { id: 7, name: 'Joghurt', qty: '2 Becher', exp: '2026-04-28', cat: 'Milch & Käse' },
+];
+let nextId = 8;
+let activeFilter = 'all';
+let scanMode = 'camera';
+let codeReader = null;
+let scanning = false;
+
+const upcDB = {
+  '049000028911': { name: 'Coca-Cola 2L', qty: '2 L', cat: 'Getränke' },
+  '070470003455': { name: 'Orangensaft', qty: '1,5 L', cat: 'Getränke' },
+  '041196830017': { name: 'Bio-Vollmilch', qty: '1 L', cat: 'Milch & Käse' },
+  '011110038364': { name: 'Eier', qty: '12 Stück', cat: 'Milch & Käse' },
+  '051500040034': { name: 'Butter', qty: '250 g', cat: 'Milch & Käse' },
+  '021130700899': { name: 'Cheddar', qty: '200 g', cat: 'Milch & Käse' },
+  '036800375536': { name: 'Babyspinat', qty: '150 g', cat: 'Gemüse & Obst' },
+  '085239038475': { name: 'Hähnchen', qty: '350 g', cat: 'Fleisch' },
+  '041196000304': { name: 'Joghurt', qty: '500 g', cat: 'Milch & Käse' },
+  '077900530803': { name: 'Hot Sauce', qty: '350 ml', cat: 'Soßen' },
+};
+
+async function lookupUPC(upc) {
+  if (!upc) return;
+  setStatus('Suche ' + upc + ' ...');
+  showResult(null);
+  if (upcDB[upc]) { showResult({ ...upcDB[upc], upc }); return; }
+  try {
+    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${upc}.json`);
+    const data = await res.json();
+    if (data.status === 1 && data.product) {
+      const p = data.product;
+      const name = p.product_name || p.product_name_en || '';
+      if (!name) { showResult({ name: 'Unbekanntes Produkt', qty: '1', cat: 'Sonstiges', upc }); return; }
+      showResult({ name, qty: p.quantity || '1', cat: guessCategory(p.categories || ''), upc });
+    } else {
+      setStatus('Produkt nicht gefunden — bitte manuell eintragen.');
+      showResult({ name: '', qty: '1', cat: 'Sonstiges', upc });
+    }
+  } catch (e) {
+    setStatus('Fehler bei der Suche — bitte manuell eintragen.');
+    showResult({ name: '', qty: '1', cat: 'Sonstiges', upc });
+  }
+}
+
+function guessCategory(cats) {
+  cats = cats.toLowerCase();
+  if (cats.includes('dairy') || cats.includes('milk') || cats.includes('cheese') || cats.includes('yogurt') || cats.includes('milch')) return 'Milch & Käse';
+  if (cats.includes('meat') || cats.includes('chicken') || cats.includes('beef') || cats.includes('fleisch')) return 'Fleisch';
+  if (cats.includes('vegetable') || cats.includes('fruit') || cats.includes('produce') || cats.includes('gemüse')) return 'Gemüse & Obst';
+  if (cats.includes('beverage') || cats.includes('drink') || cats.includes('juice') || cats.includes('getränk')) return 'Getränke';
+  if (cats.includes('sauce') || cats.includes('condiment') || cats.includes('soße')) return 'Soßen';
+  return 'Sonstiges';
+}
+
+function showResult(product) {
+  const el = document.getElementById('lookup-result');
+  if (!product) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  document.getElementById('res-name').value = product.name;
+  document.getElementById('res-qty').value = product.qty;
+  const catSel = document.getElementById('res-cat');
+  for (let i = 0; i < catSel.options.length; i++) {
+    if (catSel.options[i].value === product.cat) { catSel.selectedIndex = i; break; }
+  }
+  document.getElementById('res-exp').value = '';
+  setStatus('');
+}
+
+function cancelResult() {
+  document.getElementById('lookup-result').style.display = 'none';
+  document.getElementById('upc-input').value = '';
+  setStatus('bereit zum scannen');
+}
+
+function confirmAdd() {
+  const name = document.getElementById('res-name').value.trim();
+  if (!name) { document.getElementById('res-name').focus(); return; }
+  addItem({ name, qty: document.getElementById('res-qty').value || '1', cat: document.getElementById('res-cat').value, exp: document.getElementById('res-exp').value });
+  cancelResult();
+  showToast('✓ ' + name + ' hinzugefügt');
+  if (scanning) restartScan();
+}
+
+function quickAdd() {
+  const name = document.getElementById('qa-name').value.trim();
+  if (!name) { document.getElementById('qa-name').focus(); return; }
+  addItem({ name, qty: document.getElementById('qa-qty').value || '1', cat: document.getElementById('qa-cat').value, exp: document.getElementById('qa-exp').value });
+  document.getElementById('qa-name').value = '';
+  document.getElementById('qa-qty').value = '';
+  document.getElementById('qa-exp').value = '';
+  showToast('✓ ' + name + ' hinzugefügt');
+}
+
+function addItem(data) { items.push({ id: nextId++, ...data }); renderAll(); }
+
+async function startCamera() {
+  if (!window.ZXing) { setStatus('Scanner lädt, bitte nochmal versuchen...'); return; }
+  document.getElementById('cam-placeholder').style.display = 'none';
+  document.getElementById('camera-feed').style.display = 'block';
+  setStatus('scannen läuft...');
+  codeReader = new ZXing.BrowserMultiFormatReader();
+  scanning = true;
+  try {
+    await codeReader.decodeFromVideoDevice(null, 'camera-feed', (result, err) => {
+      if (result) {
+        const upc = result.getText();
+        setStatus('gescannt: ' + upc);
+        codeReader.reset();
+        scanning = false;
+        lookupUPC(upc);
+      }
+    });
+  } catch (e) {
+    setStatus('Kamera-Fehler: ' + e.message);
+    document.getElementById('cam-placeholder').style.display = 'flex';
+    document.getElementById('camera-feed').style.display = 'none';
+  }
+}
+
+function restartScan() {
+  if (!codeReader) return;
+  scanning = true;
+  document.getElementById('lookup-result').style.display = 'none';
+  setStatus('scannen läuft...');
+  codeReader.decodeFromVideoDevice(null, 'camera-feed', (result) => {
+    if (result) { codeReader.reset(); scanning = false; lookupUPC(result.getText()); }
+  });
+}
+
+function setMode(m) {
+  scanMode = m;
+  document.getElementById('mode-camera').style.display = m === 'camera' ? 'block' : 'none';
+  document.getElementById('mode-manual').style.display  = m === 'manual'  ? 'block' : 'none';
+  document.getElementById('btn-camera').classList.toggle('active', m === 'camera');
+  document.getElementById('btn-manual').classList.toggle('active', m === 'manual');
+}
+
+function setStatus(msg) { document.getElementById('scan-status').textContent = msg; }
+
+function showTab(t) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', ['scan','inventory','recipes','restock'][i] === t));
+  document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+  document.getElementById('tab-' + t).classList.add('active');
+}
+
+function setFilter(f) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.f === f));
+  renderInventory();
+}
+
+function renderAll() { renderStats(); renderInventory(); renderRecipes(); renderRestock(); }
+
+function renderStats() {
+  const total = items.length;
+  const exp   = items.filter(i => expStatus(i.exp) === 'expired').length;
+  const soon  = items.filter(i => expStatus(i.exp) === 'soon').length;
+  const fresh = items.filter(i => expStatus(i.exp) === 'fresh').length;
+
+  document.getElementById('stats-bar').innerHTML = `
+    <div class="stat-box"><div class="n">${total}</div><div class="l">gesamt</div></div>
+    <div class="stat-box good"><div class="n">${fresh}</div><div class="l">frisch</div></div>
+    <div class="stat-box warn"><div class="n">${soon}</div><div class="l">bald weg</div></div>
+    <div class="stat-box bad"><div class="n">${exp}</div><div class="l">abgelaufen</div></div>`;
+
+  const hc = document.getElementById('header-counts');
+  hc.innerHTML = '';
+  if (exp > 0)  hc.innerHTML += `<span class="hc-pill bad">${exp} abgelaufen</span>`;
+  if (soon > 0) hc.innerHTML += `<span class="hc-pill warn">${soon} bald weg</span>`;
+}
+
+function renderInventory() {
+  let list = [...items];
+  if      (activeFilter === 'expired') list = list.filter(i => expStatus(i.exp) === 'expired');
+  else if (activeFilter === 'soon')    list = list.filter(i => expStatus(i.exp) === 'soon');
+  else if (activeFilter === 'fresh')   list = list.filter(i => expStatus(i.exp) === 'fresh');
+  else if (!['all','expired','soon','fresh'].includes(activeFilter)) list = list.filter(i => i.cat === activeFilter);
+  list.sort((a, b) => { if (!a.exp) return 1; if (!b.exp) return -1; return new Date(a.exp) - new Date(b.exp); });
+
+  const el = document.getElementById('item-list');
+  if (!list.length) { el.innerHTML = '<div class="empty-state"><span>🔍</span>keine artikel in dieser kategorie</div>'; return; }
+  el.innerHTML = list.map(i => `
+    <div class="item-row">
+      <div>
+        <div class="item-name">${i.name}</div>
+        <div class="item-meta">${i.qty} · ${i.cat}${i.exp ? ' · ' + expLabel(i.exp) : ''}</div>
+      </div>
+      <div class="item-right">
+        ${i.exp ? `<span class="pill ${expStatus(i.exp)}">${expLabel(i.exp)}</span>` : ''}
+        <button class="rm-btn" onclick="removeItem(${i.id})" title="entfernen">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+const recipes = [
+  { name: 'Hähnchen-Spinat-Pfanne', needs: ['Hähnchenbrust', 'Eier', 'Babyspinat'] },
+  { name: 'Käse-Omelette', needs: ['Eier', 'Cheddar', 'Babyspinat'] },
+  { name: 'Joghurt mit Karotten', needs: ['Joghurt', 'Karotten'] },
+  { name: 'Hähnchen-Pfanne', needs: ['Hähnchenbrust', 'Karotten', 'Babyspinat'] },
+  { name: 'Rührei mit Gemüse', needs: ['Eier', 'Karotten'] },
+  { name: 'Hähnchen mit Käse', needs: ['Hähnchenbrust', 'Cheddar', 'Eier'] },
+];
+
+function renderRecipes() {
+  const names = items.map(i => i.name.toLowerCase());
+  const matched = recipes.map(r => {
+    const have = r.needs.filter(n => names.includes(n.toLowerCase()));
+    const miss  = r.needs.filter(n => !names.includes(n.toLowerCase()));
+    return { ...r, have, miss, pct: Math.round(have.length / r.needs.length * 100) };
+  }).filter(r => r.pct > 0).sort((a, b) => b.pct - a.pct);
+
+  const el = document.getElementById('recipe-grid');
+  if (!matched.length) { el.innerHTML = '<div class="empty-state"><span>🍳</span>mehr zutaten hinzufügen für rezeptvorschläge</div>'; return; }
+  el.innerHTML = matched.map(r => `
+    <div class="recipe-card">
+      <h3>${r.name}</h3>
+      <div class="readiness-bar"><div class="readiness-fill" style="width:${r.pct}%"></div></div>
+      <div class="r-have">vorhanden: ${r.have.join(', ')}</div>
+      ${r.miss.length
+        ? `<div class="r-miss">fehlt noch: ${r.miss.join(', ')}</div>`
+        : '<div class="r-ready">✓ sofort kochbar</div>'}
+    </div>`).join('');
+}
+
+function renderRestock() {
+  const need = items.filter(i => expStatus(i.exp) === 'expired' || expStatus(i.exp) === 'soon')
+    .sort((a, b) => new Date(a.exp) - new Date(b.exp));
+  const el = document.getElementById('restock-grid');
+  if (!need.length) { el.innerHTML = '<div class="empty-state"><span>✅</span>alles ist frisch — nichts nötig</div>'; return; }
+  el.innerHTML = need.map(i => `
+    <div class="restock-card">
+      <div>
+        <div class="item-name">${i.name}</div>
+        <div class="item-meta">${i.qty} · ${i.cat}</div>
+      </div>
+      <span class="pill ${expStatus(i.exp)}">${expLabel(i.exp)}</span>
+    </div>`).join('');
+}
+
+function removeItem(id) { items = items.filter(i => i.id !== id); renderAll(); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+renderAll();
+</script>
+</body>
+</html>
